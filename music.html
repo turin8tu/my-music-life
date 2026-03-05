@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>我的生涯个人喜好表</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- 引入 html2canvas -->
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <style>
+        body { background-color: #f3f4f6; color: #000; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        const presetTitles =[
+            "最爱的单曲", "最爱的专辑", "水准最高", "最想安利", "最有特殊意义",
+            "最佳前奏", "最佳作词", "最小众的", "最洗脑", "最佳solo",
+            "最感同身受", "最被低估", "单曲循环最久", "最治愈", "最震撼",
+            "入坑神曲", "冷门佳作", "深夜专属", "运动必备", "旅行必听",
+            "最悲伤", "最快乐", "最浪漫", "童年回忆", "最近最爱"
+        ];
+
+        const initialGrid = Array.from({ length: 25 }, (_, index) => ({
+            id: index,
+            subTitle: presetTitles[index] || `自定义标题 ${index + 1}`,
+            musicData: null
+        }));
+
+        function App() {
+            const [boardData, setBoardData] = useState({ mainTitle: "音乐生涯个人喜好表", author: "作者：（点击修改）" });
+            const[gridItems, setGridItems] = useState(initialGrid);
+
+            const [isModalOpen, setIsModalOpen] = useState(false);
+            const [activeCellId, setActiveCellId] = useState(null);
+            const [searchQuery, setSearchQuery] = useState("");
+            const [searchResults, setSearchResults] = useState([]);
+            const [isSearching, setIsSearching] = useState(false);
+            const[isExporting, setIsExporting] = useState(false);
+
+            const [searchType, setSearchType] = useState('song'); 
+            const [localTitle, setLocalTitle] = useState("");
+            const [localArtist, setLocalArtist] = useState("");
+            const [localImageStr, setLocalImageStr] = useState(null);
+
+            const handleTitleChange = (e, field) => setBoardData({ ...boardData, [field]: e.target.value });
+            const handleSubTitleChange = (id, newTitle) => {
+                setGridItems(items => items.map(item => item.id === id ? { ...item, subTitle: newTitle } : item));
+            };
+
+            const openSearchModal = (id) => { setActiveCellId(id); setIsModalOpen(true); };
+            const closeSearchModal = () => { setIsModalOpen(false); setSearchQuery(""); setSearchResults([]); setSearchType('song'); setLocalTitle(""); setLocalArtist(""); setLocalImageStr(null); };
+
+            const handleSearch = async () => {
+                if (!searchQuery) return;
+                setIsSearching(true);
+                try {
+                    const entity = searchType === 'song' ? 'song' : 'album';
+                    const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(searchQuery)}&entity=${entity}&limit=15`);
+                    const data = await response.json();
+                    
+                    const tracks = data.results.map(item => {
+                        const hdCover = item.artworkUrl100 ? item.artworkUrl100.replace('100x100bb', '600x600bb') : 'https://via.placeholder.com/300';
+                        return { title: searchType === 'song' ? item.trackName : item.collectionName, artist: item.artistName, cover: hdCover };
+                    }).filter(item => item.title);
+
+                    setSearchResults(tracks);
+                } catch (error) {
+                    console.error('API Error:', error);
+                    alert("搜索出错了，请检查网络！");
+                } finally {
+                    setIsSearching(false);
+                }
+            };
+
+            const handleLocalUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => { setLocalImageStr(event.target.result); };
+                reader.readAsDataURL(file);
+            };
+
+            const submitLocal = () => {
+                if (!localImageStr) { alert("请先选择一张图片哦！"); return; }
+                handleSelectMusic({ title: localTitle || "自定义内容", artist: localArtist || "", cover: localImageStr });
+            };
+
+            const handleSelectMusic = (music) => {
+                setGridItems(items => items.map(item => item.id === activeCellId ? { ...item, musicData: music } : item));
+                closeSearchModal();
+            };
+
+            const handleRemoveMusic = (id, e) => {
+                e.stopPropagation();
+                setGridItems(items => items.map(item => item.id === id ? { ...item, musicData: null } : item));
+            };
+
+            const handleExportImage = () => {
+                setIsExporting(true); 
+                
+                setTimeout(async () => {
+                    const boardElement = document.getElementById('capture-area');
+                    try {
+                        const canvas = await html2canvas(boardElement, { 
+                            useCORS: true, 
+                            backgroundColor: '#ffffff', 
+                            scale: 2
+                        });
+                        const imageURL = canvas.toDataURL('image/png');
+                        const link = document.createElement('a');
+                        link.href = imageURL;
+                        link.download = `${boardData.mainTitle}.png`;
+                        link.click();
+                    } catch (error) {
+                        console.error("导出失败:", error);
+                        alert("生成图片失败了！");
+                    } finally {
+                        setIsExporting(false); 
+                    }
+                }, 500); 
+            };
+
+            return (
+                <div className="min-h-screen p-8 font-sans flex flex-col items-center relative pb-24">
+                    
+                    <div id="capture-area" className="w-full max-w-[1400px] flex flex-col items-center p-8 bg-white shadow-xl rounded-sm">
+                        
+                        <div className="w-full text-center mb-10 space-y-4">
+                            {isExporting ? (
+                                <div className="text-5xl font-black text-center w-full text-black tracking-wide border-b border-gray-100" style={{ lineHeight: '1.6', paddingBottom: '16px' }}>{boardData.mainTitle}</div>
+                            ) : (
+                                <input className="bg-transparent text-5xl font-black text-center w-full focus:outline-none focus:border-b border-gray-100 pb-4 transition-colors text-black tracking-wide" value={boardData.mainTitle} onChange={(e) => handleTitleChange(e, 'mainTitle')} />
+                            )}
+                            
+                            {isExporting ? (
+                                <div className="text-xl text-gray-500 font-medium tracking-wide text-center w-full" style={{ lineHeight: '1.6', paddingBottom: '8px', paddingTop: '8px' }}>{boardData.author}</div>
+                            ) : (
+                                <input className="bg-transparent text-xl text-gray-500 font-medium tracking-wide text-center w-full focus:outline-none pt-2" value={boardData.author} onChange={(e) => handleTitleChange(e, 'author')} />
+                            )}
+                        </div>
+
+                        <div className="w-full grid grid-cols-5 gap-3">
+                            {gridItems.map((item) => (
+                                <div key={item.id} className="flex flex-col border-[1.5px] border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow group">
+                                    
+                                    <div onClick={() => openSearchModal(item.id)} className="aspect-square bg-[#f8f9fa] flex items-center justify-center relative cursor-pointer group-hover:bg-gray-100 transition-colors">
+                                        {item.musicData ? (
+                                            <>
+                                                <img src={item.musicData.cover} className="w-full h-full object-cover" crossOrigin="anonymous" />
+                                                
+                                                <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/90 via-black/50 to-transparent px-3 pt-12 pb-3 block">
+                                                    <div className="text-white text-base font-bold overflow-hidden whitespace-nowrap text-ellipsis" style={{ lineHeight: '1.5', paddingBottom: '4px' }}>{item.musicData.title}</div>
+                                                    <div className="text-gray-300 text-sm overflow-hidden whitespace-nowrap text-ellipsis" style={{ lineHeight: '1.5', paddingBottom: '2px' }}>{item.musicData.artist}</div>
+                                                </div>
+
+                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity" data-html2canvas-ignore>
+                                                    <button onClick={(e) => handleRemoveMusic(item.id, e)} className="text-white bg-red-600 px-4 py-2 rounded-full text-sm font-bold shadow-lg transform hover:scale-105 transition-all">更换 / 删除</button>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <svg className="w-16 h-16 text-gray-300 group-hover:text-gray-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.2" d="M12 4v16m8-8H4"></path></svg>
+                                        )}
+                                    </div>
+                                    
+                                    <div className="h-16 flex items-center justify-center px-2 bg-white relative w-full overflow-hidden">
+                                        {isExporting ? (
+                                            <div className="text-xl font-bold tracking-wide text-center text-gray-700 w-full overflow-hidden whitespace-nowrap text-ellipsis px-1" style={{ lineHeight: '1.8', paddingBottom: '6px', paddingTop: '2px' }}>
+                                                {item.subTitle}
+                                            </div>
+                                        ) : (
+                                            <input 
+                                                className="bg-transparent text-xl font-bold tracking-wide text-center text-gray-700 w-full focus:outline-none hover:bg-gray-50 focus:bg-gray-100 py-1.5 rounded transition-colors z-10" 
+                                                value={item.subTitle} 
+                                                onChange={(e) => handleSubTitleChange(item.id, e.target.value)} 
+                                            />
+                                        )}
+                                    </div>
+                                    
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* ===== 底部文字区域 ===== */}
+                    <div className="mt-10 flex flex-col items-center gap-3 text-center" data-html2canvas-ignore>
+                        <div className="text-gray-500 text-sm font-medium tracking-wide space-y-1">
+                            <p>点击上方主标题和各个小标题，即可修改为个人专属内容哦！</p>
+                            <p>注：因接入 iTunes 数据源，部分华语歌手名显示为英文、歌名显示为繁体。</p>
+                        </div>
+                        <div className="text-gray-400 font-medium tracking-wide space-y-1">
+                            <p>Powered by iTunes</p>
+                            <p>@Maxwell's Silver Hammer</p>
+                        </div>
+                    </div>
+
+                    <button onClick={handleExportImage} disabled={isExporting} data-html2canvas-ignore className="fixed bottom-10 right-10 bg-black hover:bg-gray-800 text-white font-bold py-4 px-8 rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.3)] transform hover:scale-105 transition-all text-lg flex items-center gap-2 disabled:opacity-50 border-2 border-white">
+                        {isExporting ? '处理画面中...' : '导出高清图片'}
+                    </button>
+
+                    {/* ====== 搜索弹窗 ====== */}
+                    {isModalOpen && (
+                        <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50 p-4 backdrop-blur-sm" data-html2canvas-ignore>
+                            <div className="bg-white w-full max-w-md rounded-2xl border border-gray-200 shadow-2xl overflow-hidden flex flex-col">
+                                
+                                <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                                    <h3 className="text-xl font-black text-black flex items-center gap-2">
+                                        填入你想展示的内容
+                                    </h3>
+                                    <button onClick={closeSearchModal} className="text-gray-400 hover:text-black text-3xl leading-none font-light">&times;</button>
+                                </div>
+
+                                <div className="flex border-b border-gray-200 bg-white">
+                                    <button onClick={() => {setSearchType('song'); setSearchResults([]);}} className={`flex-1 py-3 font-bold text-sm transition-colors ${searchType === 'song' ? 'bg-black text-white' : 'text-gray-500 hover:bg-gray-100'}`}>搜单曲</button>
+                                    <button onClick={() => {setSearchType('album'); setSearchResults([]);}} className={`flex-1 py-3 font-bold text-sm transition-colors border-l border-r border-gray-200 ${searchType === 'album' ? 'bg-black text-white' : 'text-gray-500 hover:bg-gray-100'}`}>搜专辑</button>
+                                    <button onClick={() => {setSearchType('local'); setSearchResults([]);}} className={`flex-1 py-3 font-bold text-sm transition-colors ${searchType === 'local' ? 'bg-black text-white' : 'text-gray-500 hover:bg-gray-100'}`}>自定义图片</button>
+                                </div>
+
+                                {searchType === 'local' ? (
+                                    <div className="p-6 flex flex-col gap-4 bg-white overflow-y-auto max-h-[400px]">
+                                        <div className="flex flex-col items-center gap-3 mb-2">
+                                            {localImageStr ? (
+                                                <img src={localImageStr} className="w-32 h-32 object-cover rounded-xl border border-gray-200 shadow-md" />
+                                            ) : (
+                                                <div className="w-32 h-32 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 text-sm gap-2">
+                                                    <span className="text-2xl">📸</span>
+                                                    <span>点击下方选图</span>
+                                                </div>
+                                            )}
+                                            <input type="file" accept="image/*" onChange={handleLocalUpload} className="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-black file:text-white hover:file:bg-gray-800 cursor-pointer w-full"/>
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                            <label className="font-bold text-xs text-gray-500">主标题 (如歌手名/电影名)</label>
+                                            <input type="text" value={localTitle} onChange={e => setLocalTitle(e.target.value)} className="bg-gray-50 border border-gray-200 p-3 rounded-xl font-bold focus:outline-none focus:ring-2 focus:ring-gray-300 focus:bg-white transition-colors" placeholder="输入名称..." />
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                            <label className="font-bold text-xs text-gray-500">副标题 (可选，如年份/备注)</label>
+                                            <input type="text" value={localArtist} onChange={e => setLocalArtist(e.target.value)} className="bg-gray-50 border border-gray-200 p-3 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 focus:bg-white transition-colors" placeholder="输入备注..." />
+                                        </div>
+                                        <button onClick={submitLocal} className="w-full bg-black text-white font-bold py-3 rounded-xl hover:bg-gray-800 mt-2 transition-transform transform hover:scale-[1.02]">确认填入网格</button>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col flex-1">
+                                        <div className="p-4 flex gap-2 bg-gray-50 border-b border-gray-200">
+                                            <input type="text" className="flex-1 bg-white text-black font-bold rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-300 border border-gray-200 shadow-inner" placeholder={`输入${searchType === 'song' ? '单曲' : '专辑'}名称...`} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} />
+                                            <button onClick={handleSearch} disabled={isSearching} className="bg-black hover:bg-gray-800 disabled:bg-gray-400 text-white font-bold px-6 py-3 rounded-xl transition-colors min-w-[80px]">{isSearching ? '...' : '搜索'}</button>
+                                        </div>
+                                        <div className="p-2 flex-1 overflow-y-auto max-h-80 space-y-1 bg-white">
+                                            {searchResults.length === 0 && !isSearching ? (
+                                                <div className="text-center text-gray-400 py-12 font-bold">快来搜索你心目中的{searchType === 'song' ? '神曲' : '神专'}吧！</div>
+                                            ) : (
+                                                searchResults.map((result, idx) => (
+                                                    <div key={idx} onClick={() => handleSelectMusic(result)} className="flex items-center gap-4 p-3 hover:bg-gray-100 rounded-xl cursor-pointer transition-colors border border-transparent">
+                                                        <img src={result.cover} className="w-14 h-14 rounded-md object-cover border border-gray-200 shadow-sm" crossOrigin="anonymous" />
+                                                        <div className="flex flex-col overflow-hidden">
+                                                            <span className="text-black font-extrabold truncate">{result.title}</span>
+                                                            <span className="text-gray-500 text-sm font-bold truncate">{result.artist}</span>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
