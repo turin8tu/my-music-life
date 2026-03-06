@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <title>我的音乐个人喜好表</title>
+    <title>我的音乐喜好表</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React -->
@@ -21,7 +21,8 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState } = React;
+        // 增加引入 useEffect
+        const { useState, useEffect } = React;
 
         const presetTitles =[
             "最爱的单曲", "最爱的专辑", "水准最高", "最想安利", "最有特殊意义",
@@ -38,10 +39,43 @@
         }));
 
         function App() {
-            const [boardData, setBoardData] = useState({ mainTitle: "音乐生涯个人喜好表", author: "作者：（点击修改）" });
-            const[gridItems, setGridItems] = useState(initialGrid);
+            // 初始化时从 localStorage 读取上次保存的数据，如果没有则使用默认值
+            const[boardData, setBoardData] = useState(() => {
+                try {
+                    const saved = localStorage.getItem('musicBoardData');
+                    return saved ? JSON.parse(saved) : { mainTitle: "音乐生涯个人喜好表", author: "作者：（点击修改）" };
+                } catch (e) {
+                    return { mainTitle: "音乐生涯个人喜好表", author: "作者：（点击修改）" };
+                }
+            });
 
-            const [isModalOpen, setIsModalOpen] = useState(false);
+            const [gridItems, setGridItems] = useState(() => {
+                try {
+                    const saved = localStorage.getItem('musicGridItems');
+                    return saved ? JSON.parse(saved) : initialGrid;
+                } catch (e) {
+                    return initialGrid;
+                }
+            });
+
+            // 当数据变动时，自动保存到本地存储
+            useEffect(() => {
+                try {
+                    localStorage.setItem('musicBoardData', JSON.stringify(boardData));
+                } catch (e) {
+                    console.warn("保存主标题数据失败", e);
+                }
+            }, [boardData]);
+
+            useEffect(() => {
+                try {
+                    localStorage.setItem('musicGridItems', JSON.stringify(gridItems));
+                } catch (e) {
+                    console.warn("保存网格数据失败（可能是自定义图片太大超出了浏览器存储限制）", e);
+                }
+            }, [gridItems]);
+
+            const[isModalOpen, setIsModalOpen] = useState(false);
             const [activeCellId, setActiveCellId] = useState(null);
             const [searchQuery, setSearchQuery] = useState("");
             const [searchResults, setSearchResults] = useState([]);
@@ -50,7 +84,7 @@
 
             const [searchType, setSearchType] = useState('song'); 
             const [localTitle, setLocalTitle] = useState("");
-            const [localArtist, setLocalArtist] = useState("");
+            const[localArtist, setLocalArtist] = useState("");
             const [localImageStr, setLocalImageStr] = useState(null);
 
             const handleTitleChange = (e, field) => setBoardData({ ...boardData, [field]: e.target.value });
@@ -192,21 +226,26 @@
                         </div>
                     </div>
 
-                    {/* ===== 底部文字区域 ===== */}
-                    <div className="mt-10 flex flex-col items-center gap-3 text-center" data-html2canvas-ignore>
-                        <div className="text-gray-500 text-sm font-medium tracking-wide space-y-1">
-                            <p>点击上方主标题和各个小标题，即可修改为个人专属内容哦！</p>
-                            <p>注：因接入 iTunes 数据源，部分华语歌手名显示为英文、歌名显示为繁体。</p>
-                        </div>
-                        <div className="text-gray-400 font-medium tracking-wide space-y-1">
-                            <p>Powered by iTunes</p>
-                            <p>@Maxwell's Silver Hammer</p>
-                        </div>
-                    </div>
+                    {/* ===== 底部操作与文字区域 ===== */}
+                    <div className="mt-12 flex flex-col items-center gap-8 text-center" data-html2canvas-ignore>
+                        
+                        {/* 导出图片按钮现在居中放在文字说明的上方，设计得更醒目和谐 */}
+                        <button onClick={handleExportImage} disabled={isExporting} className="bg-black hover:bg-gray-800 text-white font-bold py-4 px-12 rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.2)] transform hover:scale-105 transition-all text-lg flex items-center justify-center gap-2 disabled:opacity-50 border-2 border-white min-w-[240px]">
+                            {isExporting ? '处理画面中...' : '导出高清图片'}
+                        </button>
 
-                    <button onClick={handleExportImage} disabled={isExporting} data-html2canvas-ignore className="fixed bottom-10 right-10 bg-black hover:bg-gray-800 text-white font-bold py-4 px-8 rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.3)] transform hover:scale-105 transition-all text-lg flex items-center gap-2 disabled:opacity-50 border-2 border-white">
-                        {isExporting ? '处理画面中...' : '导出高清图片'}
-                    </button>
+                        <div className="flex flex-col items-center gap-3">
+                            <div className="text-gray-500 text-sm font-medium tracking-wide space-y-1">
+                                <p>点击上方主标题和各个小标题，即可修改为个人专属内容哦！</p>
+                                <p>注：因接入 iTunes 数据源，部分华语歌手名显示为英文、歌名显示为繁体。</p>
+                            </div>
+                            <div className="text-gray-400 font-medium tracking-wide space-y-1">
+                                <p>Powered by iTunes</p>
+                                <p>@Maxwell's Silver Hammer</p>
+                            </div>
+                        </div>
+
+                    </div>
 
                     {/* ====== 搜索弹窗 ====== */}
                     {isModalOpen && (
@@ -283,5 +322,4 @@
         root.render(<App />);
     </script>
 </body>
-
 </html>
