@@ -21,7 +21,6 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        // 增加引入 useEffect
         const { useState, useEffect } = React;
 
         const presetTitles =[
@@ -39,7 +38,6 @@
         }));
 
         function App() {
-            // 初始化时从 localStorage 读取上次保存的数据，如果没有则使用默认值
             const[boardData, setBoardData] = useState(() => {
                 try {
                     const saved = localStorage.getItem('musicBoardData');
@@ -58,19 +56,15 @@
                 }
             });
 
-            // 1. 新增：用于存储访问量的状态
             const [visitCount, setVisitCount] = useState("...");
 
-            // 2. 新增：网页加载时调用第三方 API 增加并获取访问量
             useEffect(() => {
-                // 使用免费的 counterapi 接口，turin-musicboard 是为你定义的专属命名空间
                 fetch('https://api.counterapi.dev/v1/turin-musicboard/visits/up')
                     .then(response => response.json())
                     .then(data => setVisitCount(data.count))
                     .catch(error => console.error("获取访问量失败", error));
             }, []);
 
-            // 当数据变动时，自动保存到本地存储
             useEffect(() => {
                 try {
                     localStorage.setItem('musicBoardData', JSON.stringify(boardData));
@@ -83,7 +77,7 @@
                 try {
                     localStorage.setItem('musicGridItems', JSON.stringify(gridItems));
                 } catch (e) {
-                    console.warn("保存网格数据失败（可能是自定义图片太大超出了浏览器存储限制）", e);
+                    console.warn("保存网格数据失败", e);
                 }
             }, [gridItems]);
 
@@ -180,7 +174,6 @@
             return (
                 <div className="min-h-screen p-2 md:p-8 font-sans flex flex-col items-center relative pb-24">
 
-                     {/* ====== 新增：高雅名言头部 (不参与截图) ====== */}
                     <div className="w-full max-w-[1400px] text-center mb-6 md:mb-8 mt-2 md:mt-4 select-none" data-html2canvas-ignore>
                         <p className="text-[#555] text-xl md:text-4xl tracking-[0.2em] font-light mb-2" style={{ fontFamily: '"Georgia", "Times New Roman", serif' }}>
                             「 生命没有了音乐，就如同是一场错误。 」
@@ -188,10 +181,8 @@
                         <p className="text-gray-400 text-xs md:text-lg tracking-widest italic font-light">
                             Ohne Musik wäre das Leben ein Irrtum. — Friedrich Nietzsche
                         </p>
-                        {/* 优雅的分割线 */}
                         <div className="w-8 md:w-12 h-[1px] bg-gray-300 mx-auto mt-4 md:mt-6"></div>
                     </div>
-                    {/* ======================================= */}
                    
                     <div id="capture-area" className="w-full max-w-[1400px] flex flex-col items-center p-3 md:p-8 bg-white shadow-xl rounded-sm">
                         
@@ -215,35 +206,27 @@
                                     
                                     <div onClick={() => openSearchModal(item.id)} className="aspect-square bg-[#f8f9fa] flex items-center justify-center relative cursor-pointer group-hover:bg-gray-100 transition-colors">
                                         {item.musicData ? (
-                                            <>
-                                            {/* 1. 给 img 增加 absolute inset-0，强制完美贴合方形容器并裁剪 */}
-                                            <img src={item.musicData.cover} className="absolute inset-0 w-full h-full object-cover" crossOrigin="anonymous" />
-
-                                            {/* 2. 响应式底部渐变高度和内边距，防止在手机上挡住太多图 */}
-                                            <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/90 via-black/50 to-transparent px-1.5 md:px-3 pt-6 md:pt-12 pb-2 md:pb-4 block z-10">
-                                                {/* 响应式字体：手机9px，电脑16px(text-base) */}
-                                                <div className="text-white text-[9px] md:text-base font-bold overflow-hidden whitespace-nowrap text-ellipsis drop-shadow-md pb-[1px] md:pb-1" style={{ lineHeight: '1.4' }}>
-                                                    {item.musicData.title}
+                                            <React.Fragment>
+                                                <img src={item.musicData.cover} className="absolute inset-0 w-full h-full object-cover" crossOrigin="anonymous" />
+                                                <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/90 via-black/50 to-transparent px-1.5 md:px-3 pt-6 md:pt-12 pb-2 md:pb-4 block z-10">
+                                                    <div className="text-white text-[9px] md:text-base font-bold overflow-hidden whitespace-nowrap text-ellipsis drop-shadow-md pb-[1px] md:pb-1" style={{ lineHeight: '1.4' }}>
+                                                        {item.musicData.title}
+                                                    </div>
+                                                    <div className="text-gray-300 text-[7px] md:text-sm overflow-hidden whitespace-nowrap text-ellipsis drop-shadow-md" style={{ lineHeight: '1.4' }}>
+                                                        {item.musicData.artist}
+                                                    </div>
                                                 </div>
-                                                {/* 响应式字体：手机7px，电脑14px(text-sm) */}
-                                                <div className="text-gray-300 text-[7px] md:text-sm overflow-hidden whitespace-nowrap text-ellipsis drop-shadow-md" style={{ lineHeight: '1.4' }}>
-                                                    {item.musicData.artist}
+                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity" data-html2canvas-ignore>
+                                                    <button onClick={(e) => handleRemoveMusic(item.id, e)} className="text-white bg-red-600 px-2 md:px-4 py-1 md:py-2 rounded-full text-[8px] md:text-sm font-bold shadow-lg transform hover:scale-105 transition-all">更换</button>
                                                 </div>
-                                            </div>
-
-                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity" data-html2canvas-ignore>
-                                                <button onClick={(e) => handleRemoveMusic(item.id, e)} className="text-white bg-red-600 px-2 md:px-4 py-1 md:py-2 rounded-full text-[8px] md:text-sm font-bold shadow-lg transform hover:scale-105 transition-all">更换</button>
-                                            </div>
-                                            </>
+                                            </React.Fragment>
                                         ) : (
                                             <svg className="w-8 h-8 md:w-16 md:h-16 text-gray-300 group-hover:text-gray-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.2" d="M12 4v16m8-8H4"></path></svg>
                                         )}
                                     </div>
                                     
-                                    {/* 响应式标题容器高度：手机40px，电脑64px */}
                                     <div className="h-10 md:h-16 flex items-center justify-center px-1 md:px-2 bg-white relative w-full overflow-hidden">
                                         {isExporting ? (
-                                            {/* 响应式输入框字体：手机极小，平板正常，电脑最大 */}
                                             <div className="text-[10px] sm:text-xs md:text-xl font-bold tracking-wide text-center text-gray-700 w-full overflow-hidden whitespace-nowrap text-ellipsis px-1" style={{ lineHeight: '1.8' }}>
                                                 {item.subTitle}
                                             </div>
@@ -261,7 +244,6 @@
                         </div>
                     </div>
 
-                    {/* ===== 底部操作与文字区域 ===== */}
                     <div className="mt-8 md:mt-12 flex flex-col items-center gap-6 md:gap-8 text-center" data-html2canvas-ignore>
                         
                         <button onClick={handleExportImage} disabled={isExporting} className="bg-black hover:bg-gray-800 text-white font-bold py-3 md:py-4 px-8 md:px-12 rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.2)] transform hover:scale-105 transition-all text-base md:text-lg flex items-center justify-center gap-2 disabled:opacity-50 border-2 border-white min-w-[200px] md:min-w-[240px]">
@@ -278,7 +260,6 @@
                                 <p>@Maxwell's Silver Hammer</p>
                             </div>
 
-                            {/* ====== 新增：访问量展示 ====== */}
                             <div className="mt-2 md:mt-4 flex items-center gap-2 text-[10px] md:text-xs text-gray-400 bg-gray-100 px-3 py-1.5 md:px-4 md:py-2 rounded-full shadow-inner font-mono">
                                 <span className="relative flex h-1.5 w-1.5 md:h-2 md:w-2">
                                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -287,13 +268,11 @@
                                 <span>共访问次数 : </span>
                                 <span className="text-gray-600 font-bold text-xs md:text-sm">{visitCount}</span>
                             </div>
-                            {/* ============================= */}
 
                         </div>
 
                     </div>
 
-                    {/* ====== 搜索弹窗 (已精简适配) ====== */}
                     {isModalOpen && (
                         <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50 p-4 backdrop-blur-sm" data-html2canvas-ignore>
                             <div className="bg-white w-full max-w-md rounded-2xl border border-gray-200 shadow-2xl overflow-hidden flex flex-col">
