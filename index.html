@@ -58,6 +58,18 @@
                 }
             });
 
+            // 1. 新增：用于存储访问量的状态
+            const [visitCount, setVisitCount] = useState("...");
+
+            // 2. 新增：网页加载时调用第三方 API 增加并获取访问量
+            useEffect(() => {
+                // 使用免费的 counterapi 接口，turin-musicboard 是为你定义的专属命名空间
+                fetch('https://api.counterapi.dev/v1/turin-musicboard/visits/up')
+                    .then(response => response.json())
+                    .then(data => setVisitCount(data.count))
+                    .catch(error => console.error("获取访问量失败", error));
+            }, []);
+
             // 当数据变动时，自动保存到本地存储
             useEffect(() => {
                 try {
@@ -167,7 +179,20 @@
 
             return (
                 <div className="min-h-screen p-8 font-sans flex flex-col items-center relative pb-24">
-                    
+
+                     {/* ====== 新增：高雅名言头部 (不参与截图) ====== */}
+                    <div className="w-full max-w-[1400px] text-center mb-8 mt-4 select-none" data-html2canvas-ignore>
+                        <p className="text-[#555] text-4xl tracking-[0.2em] font-light mb-2" style={{ fontFamily: '"Georgia", "Times New Roman", serif' }}>
+                            「 生命没有了音乐，就如同是一场错误。 」
+                        </p>
+                        <p className="text-gray-400 text-lg tracking-widest italic font-light">
+                            Ohne Musik wäre das Leben ein Irrtum. — Friedrich Nietzsche
+                        </p>
+                        {/* 优雅的分割线 */}
+                        <div className="w-12 h-[1px] bg-gray-300 mx-auto mt-6"></div>
+                    </div>
+                    {/* ======================================= */}
+                   
                     <div id="capture-area" className="w-full max-w-[1400px] flex flex-col items-center p-8 bg-white shadow-xl rounded-sm">
                         
                         <div className="w-full text-center mb-10 space-y-4">
@@ -191,16 +216,19 @@
                                     <div onClick={() => openSearchModal(item.id)} className="aspect-square bg-[#f8f9fa] flex items-center justify-center relative cursor-pointer group-hover:bg-gray-100 transition-colors">
                                         {item.musicData ? (
                                             <>
-                                                <img src={item.musicData.cover} className="w-full h-full object-cover" crossOrigin="anonymous" />
-                                                
-                                                <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/90 via-black/50 to-transparent px-3 pt-12 pb-3 block">
-                                                    <div className="text-white text-base font-bold overflow-hidden whitespace-nowrap text-ellipsis" style={{ lineHeight: '1.5', paddingBottom: '4px' }}>{item.musicData.title}</div>
-                                                    <div className="text-gray-300 text-sm overflow-hidden whitespace-nowrap text-ellipsis" style={{ lineHeight: '1.5', paddingBottom: '2px' }}>{item.musicData.artist}</div>
-                                                </div>
+                                            // 修复后的代码：
+                                            {/* 1. 给 img 增加 absolute inset-0，让它脱离 Flex 布局的干扰，强制完美贴合方形容器并裁剪 */}
+                                            <img src={item.musicData.cover} className="absolute inset-0 w-full h-full object-cover" crossOrigin="anonymous" />
 
-                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity" data-html2canvas-ignore>
-                                                    <button onClick={(e) => handleRemoveMusic(item.id, e)} className="text-white bg-red-600 px-4 py-2 rounded-full text-sm font-bold shadow-lg transform hover:scale-105 transition-all">更换 / 删除</button>
+                                            {/* 2. 增加底部渐变背景的 padding-bottom (pb-3 改为 pb-4)，并给第二行文字增加底部内边距，防止字母 g, j, y 等被截断 */}
+                                            <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/90 via-black/50 to-transparent px-3 pt-12 pb-4 block z-10">
+                                                <div className="text-white text-base font-bold overflow-hidden whitespace-nowrap text-ellipsis drop-shadow-md" style={{ lineHeight: '1.5', paddingBottom: '4px' }}>
+                                                    {item.musicData.title}
                                                 </div>
+                                                <div className="text-gray-300 text-sm overflow-hidden whitespace-nowrap text-ellipsis drop-shadow-md" style={{ lineHeight: '1.6', paddingBottom: '4px' }}>
+                                                    {item.musicData.artist}
+                                                </div>
+                                            </div>
                                             </>
                                         ) : (
                                             <svg className="w-16 h-16 text-gray-300 group-hover:text-gray-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.2" d="M12 4v16m8-8H4"></path></svg>
@@ -243,6 +271,18 @@
                                 <p>Powered by iTunes</p>
                                 <p>@Maxwell's Silver Hammer</p>
                             </div>
+
+                            {/* ====== 新增：访问量展示 ====== */}
+                            <div className="mt-4 flex items-center gap-2 text-xs text-gray-400 bg-gray-100 px-4 py-2 rounded-full shadow-inner font-mono">
+                                <span className="relative flex h-2 w-2">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                                </span>
+                                <span>共访问次数 : </span>
+                                <span className="text-gray-600 font-bold text-sm">{visitCount}</span>
+                            </div>
+                            {/* ============================= */}
+
                         </div>
 
                     </div>
@@ -323,3 +363,4 @@
     </script>
 </body>
 </html>
+
