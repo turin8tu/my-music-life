@@ -10,6 +10,8 @@
 
     <!-- 不是我干的 -->
 
+
+    
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React -->
@@ -17,7 +19,6 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <!-- 引入 html2canvas -->
-     <!-- React -->
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <style>
         body { background-color: #f3f4f6; color: #000; overflow-x: hidden; }
@@ -127,48 +128,37 @@
                 setIsSearching(true);
                 try {
                     const entity = searchType === 'song' ? 'song' : 'album';
-                    
-                    // 苹果 iTunes API 链接 (国区)
                     const targetUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(cleanQuery)}&entity=${entity}&country=cn&limit=15`;
                     
-                    // 🌟 终极魔法：使用 JSONP 完美绕过浏览器的 Fetch 拦截、CORS 报错和防追踪拦截！
                     const data = await new Promise((resolve, reject) => {
-                        // 生成一个随机的回调函数名，防止冲突
                         const callbackName = 'itunes_jsonp_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
                         
-                        // 1. 在全局挂载这个函数，等苹果把数据送过来
                         window[callbackName] = (responseData) => {
                             cleanup();
                             resolve(responseData);
                         };
 
-                        // 2. 创建一个隐形的 script 标签去请求苹果的服务器
                         const script = document.createElement('script');
                         script.src = `${targetUrl}&callback=${callbackName}`;
                         
-                        // 打扫战场的函数（阅后即焚）
                         const cleanup = () => {
                             delete window[callbackName];
                             if (script.parentNode) script.parentNode.removeChild(script);
                         };
 
-                        // 3. 如果连 script 都加载失败，说明彻底断网了
                         script.onerror = () => {
                             cleanup();
                             reject(new Error("网络或防火墙阻断了请求"));
                         };
 
-                        // 4. 设定 10 秒超时
                         setTimeout(() => {
                             cleanup();
                             reject(new Error("请求超时"));
                         }, 10000);
 
-                        // 5. 把标签塞进页面，正式发射请求！
                         document.body.appendChild(script);
                     });
 
-                    // 解析拿回来的数据
                     if (!data || !data.results) {
                         throw new Error("无有效数据返回");
                     }
@@ -217,9 +207,8 @@
                 closeSearchModal();
             };
 
-            // ====== 完美找回：清空/删除当前格子音乐的函数 ======
             const handleRemoveMusic = (id, e) => {
-                e.stopPropagation(); // 阻止点击事件冒泡，防止触发打开搜索框
+                e.stopPropagation(); 
                 setGridItems(items => items.map(item => item.id === id ? { ...item, musicData: null } : item));
             };
 
@@ -272,84 +261,84 @@
                         <div className="w-12 h-[1px] bg-gray-300 mx-auto mt-4 md:mt-6"></div>
                     </div>
                    
-                    <div id="capture-area" 
-                         className="w-full max-w-[1400px] flex flex-col items-center p-8 bg-white shadow-xl rounded-sm"
-                         style={{ 
-                            width: isExporting ? '1400px' : (isMobile ? `${MIN_WIDTH}px` : undefined),
-                            zoom: isExporting ? 1 : scale, 
-                            transition: 'zoom 0.3s ease'
-                         }}>
-                        
-                        <div className="w-full text-center mb-10 space-y-4">
-                            {isExporting ? (
-                                <div className="text-6xl font-black text-center w-full text-black tracking-wide border-b border-gray-100 pb-4">{boardData.mainTitle}</div>
-                            ) : (
-                                <input className="bg-transparent text-6xl font-black text-center w-full focus:outline-none focus:border-b border-gray-100 pb-4 transition-colors text-black tracking-wide" value={boardData.mainTitle} onChange={(e) => handleTitleChange(e, 'mainTitle')} />
-                            )}
+                    {/* ====== 💡 核心修复点：新增包裹层避免 Flex 居中截断左侧边界 ====== */}
+                    <div className={`w-full flex ${isMobile && !isExporting ? 'justify-start' : 'justify-center'} overflow-visible`}>
+                        <div id="capture-area" 
+                             className="w-full max-w-[1400px] flex flex-col items-center p-8 bg-white shadow-xl rounded-sm"
+                             style={{ 
+                                width: isExporting ? '1400px' : (isMobile ? `${MIN_WIDTH}px` : undefined),
+                                zoom: isExporting ? 1 : scale, 
+                                transformOrigin: 'top left', /* 强制缩放原点在左上角 */
+                                transition: 'zoom 0.3s ease'
+                             }}>
                             
-                            {isExporting ? (
-                                <div className="text-2xl text-gray-500 font-medium tracking-wide text-center w-full pt-2">{boardData.author}</div>
-                            ) : (
-                                <input className="bg-transparent text-2xl text-gray-500 font-medium tracking-wide text-center w-full focus:outline-none pt-2" value={boardData.author} onChange={(e) => handleTitleChange(e, 'author')} />
-                            )}
-                        </div>
+                            <div className="w-full text-center mb-10 space-y-4">
+                                {isExporting ? (
+                                    <div className="text-6xl font-black text-center w-full text-black tracking-wide border-b border-gray-100 pb-4">{boardData.mainTitle}</div>
+                                ) : (
+                                    <input className="bg-transparent text-6xl font-black text-center w-full focus:outline-none focus:border-b border-gray-100 pb-4 transition-colors text-black tracking-wide" value={boardData.mainTitle} onChange={(e) => handleTitleChange(e, 'mainTitle')} />
+                                )}
+                                
+                                {isExporting ? (
+                                    <div className="text-2xl text-gray-500 font-medium tracking-wide text-center w-full pt-2">{boardData.author}</div>
+                                ) : (
+                                    <input className="bg-transparent text-2xl text-gray-500 font-medium tracking-wide text-center w-full focus:outline-none pt-2" value={boardData.author} onChange={(e) => handleTitleChange(e, 'author')} />
+                                )}
+                            </div>
 
-                        <div className="w-full grid grid-cols-5 gap-3">
-                            {gridItems.map((item) => (
-                                <div key={item.id} className="flex flex-col border-[1.5px] border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow group">
-                                    
-                                    {/* 这里加入了 group/cover 用于控制封面单独的悬浮效果 */}
-                                    <div onClick={() => openSearchModal(item.id)} className="aspect-square bg-[#f8f9fa] flex items-center justify-center relative cursor-pointer group/cover overflow-hidden transition-colors">
-                                        {item.musicData ? (
-                                            <>
-                                            {/* 封面图片：鼠标悬浮时优雅缓慢放大 */}
-                                            <img src={item.musicData.cover} className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover/cover:scale-110" crossOrigin="anonymous" />
+                            <div className="w-full grid grid-cols-5 gap-3">
+                                {gridItems.map((item) => (
+                                    <div key={item.id} className="flex flex-col border-[1.5px] border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow group">
+                                        <div onClick={() => openSearchModal(item.id)} className="aspect-square bg-[#f8f9fa] flex items-center justify-center relative cursor-pointer group/cover overflow-hidden transition-colors">
+                                            {item.musicData ? (
+                                                <>
+                                                <img src={item.musicData.cover} className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover/cover:scale-110" crossOrigin="anonymous" />
 
-                                            <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/90 via-black/50 to-transparent px-3 pt-12 pb-3 block z-10">
-                                                <div className="text-white text-base font-bold truncate drop-shadow-md pb-1">
-                                                    {item.musicData.title}
+                                                <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/90 via-black/50 to-transparent px-3 pt-12 pb-3 block z-10">
+                                                    <div className="text-white text-base font-bold truncate drop-shadow-md pb-1">
+                                                        {item.musicData.title}
+                                                    </div>
+                                                    <div className="text-gray-300 text-sm truncate drop-shadow-md pb-1">
+                                                        {item.musicData.artist}
+                                                    </div>
                                                 </div>
-                                                <div className="text-gray-300 text-sm truncate drop-shadow-md pb-1">
-                                                    {item.musicData.artist}
-                                                </div>
-                                            </div>
 
-                                            {/* ====== 悬浮操作菜单 (不参与截图) ====== */}
-                                            <div data-html2canvas-ignore className="absolute inset-0 bg-black/60 opacity-0 group-hover/cover:opacity-100 transition-all duration-300 z-20 flex items-center justify-center gap-3 backdrop-blur-sm">
-                                                <button 
-                                                    onClick={(e) => { e.stopPropagation(); openSearchModal(item.id); }} 
-                                                    className="bg-white/20 hover:bg-white text-white hover:text-black font-bold py-2 px-4 rounded-full transition-colors text-sm shadow-md"
-                                                >
-                                                    更换
-                                                </button>
-                                                <button 
-                                                    onClick={(e) => handleRemoveMusic(item.id, e)} 
-                                                    className="bg-red-500/80 hover:bg-red-500 text-white font-bold py-2 px-4 rounded-full transition-colors text-sm shadow-md"
-                                                >
-                                                    删除
-                                                </button>
-                                            </div>
-                                            </>
-                                        ) : (
-                                            <svg className="w-16 h-16 text-gray-300 group-hover/cover:text-gray-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.2" d="M12 4v16m8-8H4"></path></svg>
-                                        )}
+                                                <div data-html2canvas-ignore className="absolute inset-0 bg-black/60 opacity-0 group-hover/cover:opacity-100 transition-all duration-300 z-20 flex items-center justify-center gap-3 backdrop-blur-sm">
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); openSearchModal(item.id); }} 
+                                                        className="bg-white/20 hover:bg-white text-white hover:text-black font-bold py-2 px-4 rounded-full transition-colors text-sm shadow-md"
+                                                    >
+                                                        更换
+                                                    </button>
+                                                    <button 
+                                                        onClick={(e) => handleRemoveMusic(item.id, e)} 
+                                                        className="bg-red-500/80 hover:bg-red-500 text-white font-bold py-2 px-4 rounded-full transition-colors text-sm shadow-md"
+                                                    >
+                                                        删除
+                                                    </button>
+                                                </div>
+                                                </>
+                                            ) : (
+                                                <svg className="w-16 h-16 text-gray-300 group-hover/cover:text-gray-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.2" d="M12 4v16m8-8H4"></path></svg>
+                                            )}
+                                        </div>
+                                        
+                                        <div className="h-16 flex items-center justify-center px-2 bg-white relative w-full">
+                                            {isExporting ? (
+                                                <div className="text-xl font-bold tracking-wide text-center text-gray-700 w-full truncate px-1 pt-1 pb-2.5 leading-relaxed">
+                                                    {item.subTitle}
+                                                </div>
+                                            ) : (
+                                                <input 
+                                                    className="bg-transparent text-xl font-bold tracking-wide text-center text-gray-700 w-full hover:bg-gray-50 focus:bg-gray-100 py-1.5 rounded transition-colors z-10" 
+                                                    value={item.subTitle} 
+                                                    onChange={(e) => handleSubTitleChange(item.id, e.target.value)} 
+                                                />
+                                            )}
+                                        </div>
                                     </div>
-                                    
-                                    <div className="h-16 flex items-center justify-center px-2 bg-white relative w-full">
-                                        {isExporting ? (
-                                            <div className="text-xl font-bold tracking-wide text-center text-gray-700 w-full truncate px-1 pt-1 pb-2.5 leading-relaxed">
-                                                {item.subTitle}
-                                            </div>
-                                        ) : (
-                                            <input 
-                                                className="bg-transparent text-xl font-bold tracking-wide text-center text-gray-700 w-full hover:bg-gray-50 focus:bg-gray-100 py-1.5 rounded transition-colors z-10" 
-                                                value={item.subTitle} 
-                                                onChange={(e) => handleSubTitleChange(item.id, e.target.value)} 
-                                            />
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
                     </div>
 
@@ -455,4 +444,3 @@
     </script>
 </body>
 </html>
-
