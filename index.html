@@ -6,11 +6,10 @@
     <title>我的音乐喜好表</title>
 
 
+    
+    <!--不是我干的 -->
 
-
-    <!-- 不是我干的 -->
-
-
+    
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -20,6 +19,8 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <!-- 引入 html2canvas -->
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <!-- 引入 qrious 生成本地二维码 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     <style>
         body { background-color: #f3f4f6; color: #000; overflow-x: hidden; }
         ::-webkit-scrollbar { width: 8px; }
@@ -48,7 +49,7 @@
         }));
 
         function App() {
-            const [boardData, setBoardData] = useState(() => {
+            const[boardData, setBoardData] = useState(() => {
                 try {
                     const saved = localStorage.getItem('musicBoardData');
                     return saved ? JSON.parse(saved) : { mainTitle: "音乐生涯个人喜好表", author: "作者：（点击修改）" };
@@ -57,7 +58,7 @@
                 }
             });
 
-            const [gridItems, setGridItems] = useState(() => {
+            const[gridItems, setGridItems] = useState(() => {
                 try {
                     const saved = localStorage.getItem('musicGridItems');
                     return saved ? JSON.parse(saved) : initialGrid;
@@ -66,15 +67,18 @@
                 }
             });
 
-            const[visitCount, setVisitCount] = useState("...");
-            const [windowWidth, setWindowWidth] = useState(window.innerWidth);
-            const [scale, setScale] = useState(1);
+            const[windowWidth, setWindowWidth] = useState(window.innerWidth);
+            const[scale, setScale] = useState(1);
+            const [qrSrc, setQrSrc] = useState("");
 
+            // 初始化生成网站二维码 (本地Base64)
             useEffect(() => {
-                fetch('https://api.counterapi.dev/v1/turin-musicboard/visits/up')
-                    .then(response => response.json())
-                    .then(data => setVisitCount(data.count))
-                    .catch(error => console.error("获取访问量失败", error));
+                const qr = new window.QRious({
+                    value: 'https://www.turin-musicboard.fun/',
+                    size: 300, 
+                    level: 'H' 
+                });
+                setQrSrc(qr.toDataURL('image/png'));
             },[]);
 
             useEffect(() => {
@@ -95,7 +99,7 @@
 
             useEffect(() => {
                 try { localStorage.setItem('musicBoardData', JSON.stringify(boardData)); } catch (e) {}
-            }, [boardData]);
+            },[boardData]);
 
             useEffect(() => {
                 try { localStorage.setItem('musicGridItems', JSON.stringify(gridItems)); } catch (e) {}
@@ -106,7 +110,7 @@
             const[searchQuery, setSearchQuery] = useState("");
             const[searchResults, setSearchResults] = useState([]);
             const[isSearching, setIsSearching] = useState(false);
-            const [isExporting, setIsExporting] = useState(false);
+            const[isExporting, setIsExporting] = useState(false);
 
             const [searchType, setSearchType] = useState('song'); 
             const[localTitle, setLocalTitle] = useState("");
@@ -261,14 +265,13 @@
                         <div className="w-12 h-[1px] bg-gray-300 mx-auto mt-4 md:mt-6"></div>
                     </div>
                    
-                    {/* ====== 💡 核心修复点：新增包裹层避免 Flex 居中截断左侧边界 ====== */}
                     <div className={`w-full flex ${isMobile && !isExporting ? 'justify-start' : 'justify-center'} overflow-visible`}>
                         <div id="capture-area" 
                              className="w-full max-w-[1400px] flex flex-col items-center p-8 bg-white shadow-xl rounded-sm"
                              style={{ 
                                 width: isExporting ? '1400px' : (isMobile ? `${MIN_WIDTH}px` : undefined),
                                 zoom: isExporting ? 1 : scale, 
-                                transformOrigin: 'top left', /* 强制缩放原点在左上角 */
+                                transformOrigin: 'top left',
                                 transition: 'zoom 0.3s ease'
                              }}>
                             
@@ -339,6 +342,27 @@
                                     </div>
                                 ))}
                             </div>
+
+                            {/* ====== 底部区域(导出可见) ====== */}
+                            <div className="w-full mt-12 pt-6 border-t-[1.5px] border-gray-100 flex justify-between items-end text-left select-none">
+                                <div className="flex items-center gap-4">
+                                    {/* 二维码 */}
+                                    <div className="w-[72px] h-[72px] bg-white border border-gray-100 p-1.5 rounded-xl shadow-sm flex items-center justify-center flex-shrink-0">
+                                        {qrSrc && <img src={qrSrc} alt="QR Code" className="w-full h-full object-contain opacity-90" />}
+                                    </div>
+                                    <div className="flex flex-col justify-center">
+                                        <span className="text-gray-800 font-extrabold text-[1.1rem] tracking-wider">扫描二维码，生成你的专属表单</span>
+                                        <span className="text-gray-400 font-bold text-sm tracking-widest mt-1 font-mono">www.turin-musicboard.fun</span>
+                                    </div>
+                                </div>
+                                {/* 更接地气的右下角文本 */}
+                                <div className="text-right flex flex-col justify-end pb-1">
+                                    <span className="text-gray-400 font-bold text-lg tracking-widest mb-1">我的音乐喜好表</span>
+                                    <span className="text-gray-300 font-medium text-xs tracking-widest">分享你的音乐人生</span>
+                                </div>
+                            </div>
+                            {/* =================================================== */}
+
                         </div>
                     </div>
 
@@ -357,18 +381,11 @@
                                 <p>Powered by iTunes</p>
                                 <p>@Maxwell's Silver Hammer</p>
                             </div>
-
-                            <div className="mt-2 flex items-center gap-2 text-xs text-gray-400 bg-gray-100 px-4 py-2 rounded-full shadow-inner font-mono">
-                                <span className="relative flex h-2 w-2">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                                </span>
-                                <span>共访问次数 : </span>
-                                <span className="text-gray-600 font-bold text-sm">{visitCount}</span>
-                            </div>
+                            {/* 计数器已移除，等待日后添加 */}
                         </div>
                     </div>
 
+                    {/* 搜索模态框 */}
                     {isModalOpen && (
                         <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50 p-4 backdrop-blur-sm" data-html2canvas-ignore>
                             <div className="bg-white w-full max-w-md rounded-2xl border border-gray-200 shadow-2xl overflow-hidden flex flex-col">
